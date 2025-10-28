@@ -410,6 +410,9 @@ async fn main() -> Result<()> {
             draw_line_3d(start_scaled, end_scaled, color);
         }
 
+        // Collect 3D label positions before switching to 2D
+        let mut label_3d_positions = Vec::new();
+        
         // Draw axis indicator at model corner
         if show_axis {
             let model_size_x = bounds.max.x - bounds.min.x;
@@ -471,13 +474,9 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(0.0, tick_size, 0.0),
                     Color::from_rgba(255, 80, 80, 200)
                 );
-                // Small cube as marker
-                draw_cube(
-                    tick_pos + vec3(0.0, tick_size * 1.5, 0.0),
-                    vec3(0.015, 0.015, 0.015),
-                    None,
-                    Color::from_rgba(255, 80, 80, 255)
-                );
+                // Store label position for 2D rendering
+                let label_pos = tick_pos + vec3(0.0, tick_size * 2.0, 0.0);
+                label_3d_positions.push((label_pos, format!("{:.0}", x_mm), RED));
                 x_mm += tick_interval;
             }
             
@@ -491,12 +490,9 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(tick_size, 0.0, 0.0),
                     Color::from_rgba(80, 255, 80, 200)
                 );
-                draw_cube(
-                    tick_pos + vec3(tick_size * 1.5, 0.0, 0.0),
-                    vec3(0.015, 0.015, 0.015),
-                    None,
-                    Color::from_rgba(80, 255, 80, 255)
-                );
+                // Store label position for 2D rendering
+                let label_pos = tick_pos + vec3(tick_size * 2.0, 0.0, 0.0);
+                label_3d_positions.push((label_pos, format!("{:.0}", y_mm), GREEN));
                 y_mm += tick_interval;
             }
             
@@ -510,12 +506,9 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(0.0, tick_size, 0.0),
                     Color::from_rgba(80, 80, 255, 200)
                 );
-                draw_cube(
-                    tick_pos + vec3(0.0, tick_size * 1.5, 0.0),
-                    vec3(0.015, 0.015, 0.015),
-                    None,
-                    Color::from_rgba(80, 80, 255, 255)
-                );
+                // Store label position for 2D rendering
+                let label_pos = tick_pos + vec3(0.0, tick_size * 2.0, 0.0);
+                label_3d_positions.push((label_pos, format!("{:.0}", z_mm), BLUE));
                 z_mm += tick_interval;
             }
             
@@ -546,42 +539,65 @@ async fn main() -> Result<()> {
                 Color::from_rgba(80, 80, 255, 255)
             );
             
-            // Draw size label at opposite corner (top-right-back)
-            let size_label_pos = vec3(
-                (bounds.max.x - center.x) * scale,
-                (bounds.max.z - center.z) * scale,
-                (bounds.max.y - center.y) * scale,
-            );
-            
-            // Draw a small box to mark the size label location
-            draw_cube(
-                size_label_pos,
-                vec3(0.04, 0.04, 0.04),
-                None,
-                Color::from_rgba(200, 200, 200, 255)
-            );
-            
-            // Draw lines connecting to show bounding box corner
-            let offset = 0.08;
-            draw_line_3d(
-                size_label_pos,
-                size_label_pos + vec3(offset, 0.0, 0.0),
-                Color::from_rgba(200, 200, 200, 180)
-            );
-            draw_line_3d(
-                size_label_pos,
-                size_label_pos + vec3(0.0, offset, 0.0),
-                Color::from_rgba(200, 200, 200, 180)
-            );
-            draw_line_3d(
-                size_label_pos,
-                size_label_pos + vec3(0.0, 0.0, offset),
-                Color::from_rgba(200, 200, 200, 180)
-            );
+            // Add axis labels (X, Y, Z text)
+            label_3d_positions.push((
+                axis_origin + vec3(x_len + 0.1, 0.0, 0.0),
+                "X".to_string(),
+                Color::from_rgba(255, 80, 80, 255)
+            ));
+            label_3d_positions.push((
+                axis_origin + vec3(0.0, y_len + 0.1, 0.0),
+                "Y".to_string(),
+                Color::from_rgba(80, 255, 80, 255)
+            ));
+            label_3d_positions.push((
+                axis_origin + vec3(0.0, 0.0, z_len + 0.1),
+                "Z".to_string(),
+                Color::from_rgba(80, 80, 255, 255)
+            ));
         }
 
         // Switch to 2D for UI
         set_default_camera();
+
+        // Draw 3D labels as 2D text
+        let cam_3d = Camera3D {
+            position: camera.position(),
+            target: camera.target,
+            up: vec3(0.0, 1.0, 0.0),
+            fovy: 45.0,
+            projection: Projection::Perspective,
+            ..Default::default()
+        };
+        
+        for (pos_3d, label, color) in &label_3d_positions {
+            // Manual MVP projection
+            let view = Mat4::look_at_rh(cam_3d.position, cam_3d.target, cam_3d.up);
+            let proj = Mat4::perspective_rh_gl(
+                cam_3d.fovy.to_radians(),
+                screen_width() / screen_height(),
+                0.01,
+                1000.0
+            );
+            let mvp = proj * view;
+            
+            let pos_4d = mvp * pos_3d.extend(1.0);
+            
+            // Perspective divide
+            if pos_4d.w > 0.0 {
+                let ndc_x = pos_4d.x / pos_4d.w;
+                let ndc_y = pos_4d.y / pos_4d.w;
+                let ndc_z = pos_4d.z / pos_4d.w;
+                
+                // Check if in front of camera and in view
+                if ndc_z > -1.0 && ndc_z < 1.0 && ndc_x.abs() < 1.5 && ndc_y.abs() < 1.5 {
+                    let screen_x = (ndc_x * 0.5 + 0.5) * screen_width();
+                    let screen_y = (0.5 - ndc_y * 0.5) * screen_height();
+                    
+                    draw_text(label, screen_x, screen_y, 16.0, *color);
+                }
+            }
+        }
 
         let model_size_x = bounds.max.x - bounds.min.x;
         let model_size_y = bounds.max.y - bounds.min.y;
