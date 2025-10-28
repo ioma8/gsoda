@@ -168,6 +168,54 @@ fn parse_gcode(filename: &str) -> Result<Vec<LineSegment>> {
     Ok(segments)
 }
 
+fn filter_priming_lines(segments: &[LineSegment]) -> Vec<LineSegment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    // Better strategy: Find where the actual print starts by looking for
+    // a cluster of extrusion moves away from the edges
+    // This skips all priming, homing, and positioning moves
+    
+    let mut start_index = 0;
+    let mut found_start = false;
+    
+    // Look for first significant cluster of extrusion moves
+    // that are NOT at the build plate edges
+    for (i, window) in segments.windows(5).enumerate() {
+        // Check if we have several extrusion moves in a row
+        let extrusion_count = window.iter().filter(|s| s.is_extrusion).count();
+        
+        if extrusion_count >= 3 {
+            // Check if these moves are away from edges (not priming)
+            // Edges defined as: X < 10, Y < 20, or very long moves (>100mm)
+            let away_from_edges = window.iter().all(|s| {
+                let at_edge = s.start.x < 10.0 || s.end.x < 10.0 ||
+                             s.start.y < 20.0 || s.end.y < 20.0;
+                let long_move = (s.end.x - s.start.x).abs() > 100.0 ||
+                               (s.end.y - s.start.y).abs() > 100.0;
+                !at_edge && !long_move
+            });
+            
+            if away_from_edges {
+                start_index = i;
+                found_start = true;
+                break;
+            }
+        }
+    }
+    
+    if !found_start {
+        // Fallback: start from first extrusion
+        start_index = segments.iter()
+            .position(|s| s.is_extrusion)
+            .unwrap_or(0);
+    }
+    
+    // Return only segments from the actual print start
+    segments[start_index..].to_vec()
+}
+
 fn compute_bounds(segments: &[LineSegment]) -> Bounds {
     let mut bounds = Bounds::new();
     for seg in segments {
@@ -207,6 +255,9 @@ async fn main() -> Result<()> {
 
     let segments = parse_gcode(filename)?;
     println!("Parsed {} line segments", segments.len());
+    
+    let segments = filter_priming_lines(&segments);
+    println!("After filtering priming: {} segments", segments.len());
 
     if segments.is_empty() {
         anyhow::bail!("No valid G-code movements found in file");
