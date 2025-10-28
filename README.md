@@ -6,6 +6,7 @@ A high-performance 3D G-code visualizer built with Rust, Macroquad, and the gcod
 
 - **Fast rendering** - Precomputes geometry once, minimal per-frame overhead
 - **3D visualization** - Interactive orbit camera with mouse controls
+- **Height-based shading** - Gradient coloring for better depth perception
 - **Color-coded paths** - Blue for extrusion moves, red for travel moves
 - **Toggle travel moves** - Hide/show non-printing movements (M key)
 - **Layer filtering** - Toggle to view specific layer ranges

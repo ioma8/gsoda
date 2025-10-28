@@ -318,10 +318,26 @@ async fn main() -> Result<()> {
                 (seg.end.y - center.y) * scale,
             );
 
+            // Calculate color with height-based shading for depth perception
+            let height_ratio = (seg.layer_z - bounds.min.z) / (bounds.max.z - bounds.min.z);
             let color = if seg.is_extrusion {
-                Color::from_rgba(100, 200, 255, 255)
+                // Blue extrusion with gradient from dark (bottom) to bright (top)
+                let brightness = 0.4 + height_ratio * 0.6; // Range: 0.4 to 1.0
+                Color::from_rgba(
+                    (80.0 * brightness) as u8,
+                    (180.0 * brightness) as u8,
+                    (255.0 * brightness) as u8,
+                    255
+                )
             } else {
-                Color::from_rgba(255, 100, 100, 180)
+                // Red travel moves, slightly dimmed with height
+                let brightness = 0.5 + height_ratio * 0.5;
+                Color::from_rgba(
+                    (255.0 * brightness) as u8,
+                    (80.0 * brightness) as u8,
+                    (80.0 * brightness) as u8,
+                    180
+                )
             };
 
             draw_line_3d(start_scaled, end_scaled, color);
