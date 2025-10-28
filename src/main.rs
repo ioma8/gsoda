@@ -173,22 +173,18 @@ fn filter_priming_lines(segments: &[LineSegment]) -> Vec<LineSegment> {
         return Vec::new();
     }
 
-    // Better strategy: Find where the actual print starts by looking for
-    // a cluster of extrusion moves away from the edges
-    // This skips all priming, homing, and positioning moves
+    // Strategy: Find where the actual print starts and ends by looking for
+    // clusters of extrusion moves away from edges
+    // This skips priming, homing, and positioning moves
     
-    let mut start_index = 0;
-    let mut found_start = false;
+    let mut start_index = None;
+    let mut end_index = None;
     
-    // Look for first significant cluster of extrusion moves
-    // that are NOT at the build plate edges
+    // Find first cluster of extrusion moves away from edges
     for (i, window) in segments.windows(5).enumerate() {
-        // Check if we have several extrusion moves in a row
         let extrusion_count = window.iter().filter(|s| s.is_extrusion).count();
         
         if extrusion_count >= 3 {
-            // Check if these moves are away from edges (not priming)
-            // Edges defined as: X < 10, Y < 20, or very long moves (>100mm)
             let away_from_edges = window.iter().all(|s| {
                 let at_edge = s.start.x < 10.0 || s.end.x < 10.0 ||
                              s.start.y < 20.0 || s.end.y < 20.0;
@@ -198,30 +194,34 @@ fn filter_priming_lines(segments: &[LineSegment]) -> Vec<LineSegment> {
             });
             
             if away_from_edges {
-                start_index = i;
-                found_start = true;
+                start_index = Some(i);
                 break;
             }
         }
     }
     
-    if !found_start {
-        // Fallback: start from first extrusion
-        start_index = segments.iter()
-            .position(|s| s.is_extrusion)
-            .unwrap_or(0);
-    }
+    // Find last extrusion (end of actual print)
+    end_index = segments.iter()
+        .rposition(|s| s.is_extrusion)
+        .map(|i| i + 1); // +1 to include this segment
     
-    // Return only segments from the actual print start
-    segments[start_index..].to_vec()
+    let start = start_index.unwrap_or(0);
+    let end = end_index.unwrap_or(segments.len());
+    
+    segments[start..end].to_vec()
 }
 
 fn compute_bounds(segments: &[LineSegment]) -> Bounds {
     let mut bounds = Bounds::new();
+    
+    // Only compute bounds from extrusion moves to ignore travel/homing
     for seg in segments {
-        bounds.expand(seg.start);
-        bounds.expand(seg.end);
+        if seg.is_extrusion {
+            bounds.expand(seg.start);
+            bounds.expand(seg.end);
+        }
     }
+    
     bounds
 }
 
