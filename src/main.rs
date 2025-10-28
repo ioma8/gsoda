@@ -245,6 +245,7 @@ async fn main() -> Result<()> {
         eprintln!("  R:          Reset camera");
         eprintln!("  L:          Toggle layer filtering");
         eprintln!("  M:          Toggle travel moves");
+        eprintln!("  S:          Toggle axis indicator");
         eprintln!("  Up/Down:    Adjust visible layers");
         eprintln!("  Esc:        Quit");
         std::process::exit(1);
@@ -277,7 +278,8 @@ async fn main() -> Result<()> {
     let mut camera = Camera::new(initial_distance);
     let mut layer_filter_enabled = false;
     let mut layer_filter_z = max_z;
-    let mut show_travel_moves = false;
+    let mut show_travel_moves = true; // Changed to true by default
+    let mut show_axis = true; // Show axis indicator by default
 
     let mut last_mouse_pos: Option<(f32, f32)> = None;
 
@@ -299,6 +301,11 @@ async fn main() -> Result<()> {
         if is_key_pressed(KeyCode::M) {
             show_travel_moves = !show_travel_moves;
             println!("Travel moves: {}", if show_travel_moves { "ON" } else { "OFF" });
+        }
+
+        if is_key_pressed(KeyCode::S) {
+            show_axis = !show_axis;
+            println!("Axis indicator: {}", if show_axis { "ON" } else { "OFF" });
         }
 
         if layer_filter_enabled {
@@ -403,23 +410,93 @@ async fn main() -> Result<()> {
             draw_line_3d(start_scaled, end_scaled, color);
         }
 
+        // Draw axis indicator at model corner
+        if show_axis {
+            let model_size_x = bounds.max.x - bounds.min.x;
+            let model_size_y = bounds.max.y - bounds.min.y;
+            let model_size_z = bounds.max.z - bounds.min.z;
+            
+            // Position at bottom-left-front corner of model
+            let axis_origin = vec3(
+                (bounds.min.x - center.x) * scale,
+                (bounds.min.z - center.z) * scale,
+                (bounds.min.y - center.y) * scale,
+            );
+            
+            // Axis length - 20% of model size or minimum 0.3
+            let axis_len = (model_size_x.max(model_size_y).max(model_size_z) * scale * 0.2).max(0.3);
+            
+            // X axis - Red
+            draw_line_3d(
+                axis_origin,
+                axis_origin + vec3(axis_len, 0.0, 0.0),
+                Color::from_rgba(255, 80, 80, 255)
+            );
+            
+            // Y axis (Z in model space) - Green
+            draw_line_3d(
+                axis_origin,
+                axis_origin + vec3(0.0, axis_len, 0.0),
+                Color::from_rgba(80, 255, 80, 255)
+            );
+            
+            // Z axis (Y in model space) - Blue
+            draw_line_3d(
+                axis_origin,
+                axis_origin + vec3(0.0, 0.0, axis_len),
+                Color::from_rgba(80, 80, 255, 255)
+            );
+            
+            // Calculate actual mm length represented by axis
+            let axis_mm = axis_len / scale;
+            
+            // Draw axis labels (X, Y, Z) at the end of each axis
+            let label_offset = axis_len * 1.1;
+            
+            // X label
+            draw_cube(
+                axis_origin + vec3(label_offset, 0.0, 0.0),
+                vec3(0.02, 0.02, 0.02),
+                None,
+                Color::from_rgba(255, 80, 80, 255)
+            );
+            
+            // Y label  
+            draw_cube(
+                axis_origin + vec3(0.0, label_offset, 0.0),
+                vec3(0.02, 0.02, 0.02),
+                None,
+                Color::from_rgba(80, 255, 80, 255)
+            );
+            
+            // Z label
+            draw_cube(
+                axis_origin + vec3(0.0, 0.0, label_offset),
+                vec3(0.02, 0.02, 0.02),
+                None,
+                Color::from_rgba(80, 80, 255, 255)
+            );
+        }
+
         // Switch to 2D for UI
         set_default_camera();
 
+        let model_size_x = bounds.max.x - bounds.min.x;
+        let model_size_y = bounds.max.y - bounds.min.y;
+        let model_size_z = bounds.max.z - bounds.min.z;
+
         let ui_text = format!(
-            "Segments: {} | Camera: {:.1} | Layer: {} | Travel: {}",
+            "Segments: {} | Size: {:.1}x{:.1}x{:.1}mm | Travel: {} | Axis: {}",
             segments.len(),
-            camera.distance,
-            if layer_filter_enabled {
-                format!("ON (Z≤{:.1})", layer_filter_z)
-            } else {
-                "OFF".to_string()
-            },
-            if show_travel_moves { "ON" } else { "OFF" }
+            model_size_x,
+            model_size_y,
+            model_size_z,
+            if show_travel_moves { "ON" } else { "OFF" },
+            if show_axis { "ON" } else { "OFF" }
         );
         draw_text(&ui_text, 10.0, 25.0, 20.0, WHITE);
         draw_text(
-            "Controls: Drag=Rotate | Scroll=Zoom | R=Reset | L=Layers | M=Travel | Up/Down=Filter | Esc=Quit",
+            "Controls: Drag=Rotate | Scroll=Zoom | R=Reset | L=Layers | M=Travel | S=Axis | Up/Down=Filter | Esc=Quit",
             10.0,
             screen_height() - 10.0,
             18.0,
