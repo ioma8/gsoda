@@ -296,6 +296,9 @@ async fn main() -> Result<()> {
         // Draw grid
         draw_grid(20, 0.1, DARKGRAY, Color::from_rgba(60, 60, 80, 255));
 
+        // Define light direction (from top-front-right, normalized)
+        let light_dir = vec3(0.5, 0.7, 0.3).normalize();
+
         // Draw toolpath
         for seg in &segments {
             if layer_filter_enabled && seg.layer_z > layer_filter_z {
@@ -318,11 +321,20 @@ async fn main() -> Result<()> {
                 (seg.end.y - center.y) * scale,
             );
 
+            // Calculate line direction for lighting
+            let line_dir = (end_scaled - start_scaled).normalize();
+            
+            // Simple diffuse lighting: dot product with light direction
+            // Use abs to light both sides of the line
+            let light_intensity = line_dir.dot(light_dir).abs();
+            // Combine with ambient lighting (0.4 base + 0.6 from directional)
+            let lighting = 0.4 + light_intensity * 0.6;
+
             // Calculate color with height-based shading for depth perception
             let height_ratio = (seg.layer_z - bounds.min.z) / (bounds.max.z - bounds.min.z);
             let color = if seg.is_extrusion {
                 // Blue extrusion with gradient from dark (bottom) to bright (top)
-                let brightness = 0.4 + height_ratio * 0.6; // Range: 0.4 to 1.0
+                let brightness = (0.4 + height_ratio * 0.6) * lighting; // Apply lighting
                 Color::from_rgba(
                     (80.0 * brightness) as u8,
                     (180.0 * brightness) as u8,
@@ -331,7 +343,7 @@ async fn main() -> Result<()> {
                 )
             } else {
                 // Red travel moves, slightly dimmed with height
-                let brightness = 0.5 + height_ratio * 0.5;
+                let brightness = (0.5 + height_ratio * 0.5) * lighting;
                 Color::from_rgba(
                     (255.0 * brightness) as u8,
                     (80.0 * brightness) as u8,
