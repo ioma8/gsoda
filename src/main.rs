@@ -416,65 +416,167 @@ async fn main() -> Result<()> {
             let model_size_y = bounds.max.y - bounds.min.y;
             let model_size_z = bounds.max.z - bounds.min.z;
             
-            // Position at bottom-left-front corner of model
+            // Position at bottom-left-front corner of model (in scaled space)
             let axis_origin = vec3(
                 (bounds.min.x - center.x) * scale,
                 (bounds.min.z - center.z) * scale,
                 (bounds.min.y - center.y) * scale,
             );
             
-            // Axis length - 20% of model size or minimum 0.3
-            let axis_len = (model_size_x.max(model_size_y).max(model_size_z) * scale * 0.2).max(0.3);
+            // Axis lengths match actual model dimensions
+            let x_len = model_size_x * scale;
+            let y_len = model_size_z * scale;
+            let z_len = model_size_y * scale;
             
-            // X axis - Red
+            // X axis - Red (along model X)
             draw_line_3d(
                 axis_origin,
-                axis_origin + vec3(axis_len, 0.0, 0.0),
+                axis_origin + vec3(x_len, 0.0, 0.0),
                 Color::from_rgba(255, 80, 80, 255)
             );
             
-            // Y axis (Z in model space) - Green
+            // Y axis (Z in model space) - Green (vertical)
             draw_line_3d(
                 axis_origin,
-                axis_origin + vec3(0.0, axis_len, 0.0),
+                axis_origin + vec3(0.0, y_len, 0.0),
                 Color::from_rgba(80, 255, 80, 255)
             );
             
-            // Z axis (Y in model space) - Blue
+            // Z axis (Y in model space) - Blue (depth)
             draw_line_3d(
                 axis_origin,
-                axis_origin + vec3(0.0, 0.0, axis_len),
+                axis_origin + vec3(0.0, 0.0, z_len),
                 Color::from_rgba(80, 80, 255, 255)
             );
             
-            // Calculate actual mm length represented by axis
-            let axis_mm = axis_len / scale;
+            // Draw tick marks every 10mm (or appropriate interval)
+            let max_dim = model_size_x.max(model_size_y).max(model_size_z);
+            let tick_interval = if max_dim > 200.0 {
+                50.0 // Every 50mm for large models
+            } else if max_dim > 100.0 {
+                20.0 // Every 20mm for medium models
+            } else {
+                10.0 // Every 10mm for small models
+            };
             
-            // Draw axis labels (X, Y, Z) at the end of each axis
-            let label_offset = axis_len * 1.1;
+            let tick_size = 0.05; // Size of tick marks in scaled space
             
-            // X label
+            // X axis ticks
+            let mut x_mm = tick_interval;
+            while x_mm <= model_size_x {
+                let x_pos = x_mm * scale;
+                let tick_pos = axis_origin + vec3(x_pos, 0.0, 0.0);
+                draw_line_3d(
+                    tick_pos,
+                    tick_pos + vec3(0.0, tick_size, 0.0),
+                    Color::from_rgba(255, 80, 80, 200)
+                );
+                // Small cube as marker
+                draw_cube(
+                    tick_pos + vec3(0.0, tick_size * 1.5, 0.0),
+                    vec3(0.015, 0.015, 0.015),
+                    None,
+                    Color::from_rgba(255, 80, 80, 255)
+                );
+                x_mm += tick_interval;
+            }
+            
+            // Y axis (vertical) ticks
+            let mut y_mm = tick_interval;
+            while y_mm <= model_size_z {
+                let y_pos = y_mm * scale;
+                let tick_pos = axis_origin + vec3(0.0, y_pos, 0.0);
+                draw_line_3d(
+                    tick_pos,
+                    tick_pos + vec3(tick_size, 0.0, 0.0),
+                    Color::from_rgba(80, 255, 80, 200)
+                );
+                draw_cube(
+                    tick_pos + vec3(tick_size * 1.5, 0.0, 0.0),
+                    vec3(0.015, 0.015, 0.015),
+                    None,
+                    Color::from_rgba(80, 255, 80, 255)
+                );
+                y_mm += tick_interval;
+            }
+            
+            // Z axis (depth) ticks
+            let mut z_mm = tick_interval;
+            while z_mm <= model_size_y {
+                let z_pos = z_mm * scale;
+                let tick_pos = axis_origin + vec3(0.0, 0.0, z_pos);
+                draw_line_3d(
+                    tick_pos,
+                    tick_pos + vec3(0.0, tick_size, 0.0),
+                    Color::from_rgba(80, 80, 255, 200)
+                );
+                draw_cube(
+                    tick_pos + vec3(0.0, tick_size * 1.5, 0.0),
+                    vec3(0.015, 0.015, 0.015),
+                    None,
+                    Color::from_rgba(80, 80, 255, 255)
+                );
+                z_mm += tick_interval;
+            }
+            
+            // Draw axis labels at the end
+            let label_size = vec3(0.03, 0.03, 0.03);
+            
+            // X label (red) at end of X axis
             draw_cube(
-                axis_origin + vec3(label_offset, 0.0, 0.0),
-                vec3(0.02, 0.02, 0.02),
+                axis_origin + vec3(x_len + 0.05, 0.0, 0.0),
+                label_size,
                 None,
                 Color::from_rgba(255, 80, 80, 255)
             );
             
-            // Y label  
+            // Y label (green) at end of Y axis
             draw_cube(
-                axis_origin + vec3(0.0, label_offset, 0.0),
-                vec3(0.02, 0.02, 0.02),
+                axis_origin + vec3(0.0, y_len + 0.05, 0.0),
+                label_size,
                 None,
                 Color::from_rgba(80, 255, 80, 255)
             );
             
-            // Z label
+            // Z label (blue) at end of Z axis
             draw_cube(
-                axis_origin + vec3(0.0, 0.0, label_offset),
-                vec3(0.02, 0.02, 0.02),
+                axis_origin + vec3(0.0, 0.0, z_len + 0.05),
+                label_size,
                 None,
                 Color::from_rgba(80, 80, 255, 255)
+            );
+            
+            // Draw size label at opposite corner (top-right-back)
+            let size_label_pos = vec3(
+                (bounds.max.x - center.x) * scale,
+                (bounds.max.z - center.z) * scale,
+                (bounds.max.y - center.y) * scale,
+            );
+            
+            // Draw a small box to mark the size label location
+            draw_cube(
+                size_label_pos,
+                vec3(0.04, 0.04, 0.04),
+                None,
+                Color::from_rgba(200, 200, 200, 255)
+            );
+            
+            // Draw lines connecting to show bounding box corner
+            let offset = 0.08;
+            draw_line_3d(
+                size_label_pos,
+                size_label_pos + vec3(offset, 0.0, 0.0),
+                Color::from_rgba(200, 200, 200, 180)
+            );
+            draw_line_3d(
+                size_label_pos,
+                size_label_pos + vec3(0.0, offset, 0.0),
+                Color::from_rgba(200, 200, 200, 180)
+            );
+            draw_line_3d(
+                size_label_pos,
+                size_label_pos + vec3(0.0, 0.0, offset),
+                Color::from_rgba(200, 200, 200, 180)
             );
         }
 
