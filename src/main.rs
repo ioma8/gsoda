@@ -293,9 +293,6 @@ async fn main() -> Result<()> {
             ..Default::default()
         });
 
-        // Draw grid
-        draw_grid(20, 0.1, DARKGRAY, Color::from_rgba(60, 60, 80, 255));
-
         // Define light direction (from top-front-right, normalized)
         let light_dir = vec3(0.5, 0.7, 0.3).normalize();
 
@@ -327,27 +324,27 @@ async fn main() -> Result<()> {
             // Simple diffuse lighting: dot product with light direction
             // Use abs to light both sides of the line
             let light_intensity = line_dir.dot(light_dir).abs();
-            // Combine with ambient lighting (0.4 base + 0.6 from directional)
-            let lighting = 0.4 + light_intensity * 0.6;
+            // Combine with ambient lighting (0.6 base + 0.4 from directional) - brighter overall
+            let lighting = 0.6 + light_intensity * 0.4;
 
             // Calculate color with height-based shading for depth perception
             let height_ratio = (seg.layer_z - bounds.min.z) / (bounds.max.z - bounds.min.z);
             let color = if seg.is_extrusion {
                 // Blue extrusion with gradient from dark (bottom) to bright (top)
-                let brightness = (0.4 + height_ratio * 0.6) * lighting; // Apply lighting
+                let brightness = (0.5 + height_ratio * 0.5) * lighting; // Apply lighting, brighter base
                 Color::from_rgba(
-                    (80.0 * brightness) as u8,
-                    (180.0 * brightness) as u8,
+                    (100.0 * brightness) as u8,
+                    (200.0 * brightness) as u8,
                     (255.0 * brightness) as u8,
                     255
                 )
             } else {
                 // Red travel moves, slightly dimmed with height
-                let brightness = (0.5 + height_ratio * 0.5) * lighting;
+                let brightness = (0.6 + height_ratio * 0.4) * lighting; // Brighter base
                 Color::from_rgba(
                     (255.0 * brightness) as u8,
-                    (80.0 * brightness) as u8,
-                    (80.0 * brightness) as u8,
+                    (100.0 * brightness) as u8,
+                    (100.0 * brightness) as u8,
                     180
                 )
             };
