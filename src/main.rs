@@ -196,6 +196,7 @@ async fn main() -> Result<()> {
         eprintln!("  Scroll:     Zoom in/out");
         eprintln!("  R:          Reset camera");
         eprintln!("  L:          Toggle layer filtering");
+        eprintln!("  M:          Toggle travel moves");
         eprintln!("  Up/Down:    Adjust visible layers");
         eprintln!("  Esc:        Quit");
         std::process::exit(1);
@@ -225,6 +226,7 @@ async fn main() -> Result<()> {
     let mut camera = Camera::new(initial_distance);
     let mut layer_filter_enabled = false;
     let mut layer_filter_z = max_z;
+    let mut show_travel_moves = false;
 
     let mut last_mouse_pos: Option<(f32, f32)> = None;
 
@@ -241,6 +243,11 @@ async fn main() -> Result<()> {
         if is_key_pressed(KeyCode::L) {
             layer_filter_enabled = !layer_filter_enabled;
             println!("Layer filter: {}", if layer_filter_enabled { "ON" } else { "OFF" });
+        }
+
+        if is_key_pressed(KeyCode::M) {
+            show_travel_moves = !show_travel_moves;
+            println!("Travel moves: {}", if show_travel_moves { "ON" } else { "OFF" });
         }
 
         if layer_filter_enabled {
@@ -295,6 +302,11 @@ async fn main() -> Result<()> {
                 continue;
             }
 
+            // Skip travel moves if not enabled
+            if !seg.is_extrusion && !show_travel_moves {
+                continue;
+            }
+
             let start_scaled = vec3(
                 (seg.start.x - center.x) * scale,
                 (seg.start.z - center.z) * scale,
@@ -319,7 +331,7 @@ async fn main() -> Result<()> {
         set_default_camera();
 
         let ui_text = format!(
-            "Segments: {} | Camera: {:.1} | Layer: {}{}",
+            "Segments: {} | Camera: {:.1} | Layer: {} | Travel: {}",
             segments.len(),
             camera.distance,
             if layer_filter_enabled {
@@ -327,11 +339,11 @@ async fn main() -> Result<()> {
             } else {
                 "OFF".to_string()
             },
-            ""
+            if show_travel_moves { "ON" } else { "OFF" }
         );
         draw_text(&ui_text, 10.0, 25.0, 20.0, WHITE);
         draw_text(
-            "Controls: Drag=Rotate | Scroll=Zoom | R=Reset | L=Layers | Up/Down=Filter | Esc=Quit",
+            "Controls: Drag=Rotate | Scroll=Zoom | R=Reset | L=Layers | M=Travel | Up/Down=Filter | Esc=Quit",
             10.0,
             screen_height() - 10.0,
             18.0,

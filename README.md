@@ -7,6 +7,7 @@ A high-performance 3D G-code visualizer built with Rust, Macroquad, and the gcod
 - **Fast rendering** - Precomputes geometry once, minimal per-frame overhead
 - **3D visualization** - Interactive orbit camera with mouse controls
 - **Color-coded paths** - Blue for extrusion moves, red for travel moves
+- **Toggle travel moves** - Hide/show non-printing movements (M key)
 - **Layer filtering** - Toggle to view specific layer ranges
 - **Auto-scaling** - Automatically fits model to viewport
 - **Cross-platform** - Runs on Linux, macOS, and Windows
@@ -36,6 +37,7 @@ cargo run --release -- auto1.gcode
 | **Mouse scroll** | Zoom in/out |
 | **R** | Reset camera to default position |
 | **L** | Toggle layer filtering on/off |
+| **M** | Toggle travel moves visibility |
 | **Up/Down arrows** | Adjust visible layer height (when filtering enabled) |
 | **Esc** | Quit application |
 
