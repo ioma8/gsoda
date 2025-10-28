@@ -474,8 +474,8 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(0.0, tick_size, 0.0),
                     Color::from_rgba(255, 80, 80, 200)
                 );
-                // Store label position for 2D rendering - closer to axis
-                let label_pos = tick_pos + vec3(0.0, tick_size * 1.2, 0.0);
+                // Store label position for 2D rendering - very close to axis
+                let label_pos = tick_pos + vec3(0.0, tick_size * 0.6, 0.0);
                 label_3d_positions.push((label_pos, format!("{:.0}", x_mm), RED));
                 x_mm += tick_interval;
             }
@@ -490,8 +490,8 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(tick_size, 0.0, 0.0),
                     Color::from_rgba(80, 255, 80, 200)
                 );
-                // Store label position for 2D rendering - closer to axis
-                let label_pos = tick_pos + vec3(tick_size * 1.2, 0.0, 0.0);
+                // Store label position for 2D rendering - very close to axis
+                let label_pos = tick_pos + vec3(tick_size * 0.6, 0.0, 0.0);
                 label_3d_positions.push((label_pos, format!("{:.0}", y_mm), GREEN));
                 y_mm += tick_interval;
             }
@@ -506,8 +506,8 @@ async fn main() -> Result<()> {
                     tick_pos + vec3(0.0, tick_size, 0.0),
                     Color::from_rgba(80, 80, 255, 200)
                 );
-                // Store label position for 2D rendering - closer to axis
-                let label_pos = tick_pos + vec3(0.0, tick_size * 1.2, 0.0);
+                // Store label position for 2D rendering - very close to axis
+                let label_pos = tick_pos + vec3(0.0, tick_size * 0.6, 0.0);
                 label_3d_positions.push((label_pos, format!("{:.0}", z_mm), BLUE));
                 z_mm += tick_interval;
             }
@@ -541,37 +541,37 @@ async fn main() -> Result<()> {
             
             // Add axis labels (X, Y, Z text) and final dimensions at axis ends
             label_3d_positions.push((
-                axis_origin + vec3(x_len + 0.1, 0.0, 0.0),
+                axis_origin + vec3(x_len + 0.06, 0.0, 0.0),
                 "X".to_string(),
                 Color::from_rgba(255, 80, 80, 255)
             ));
             // Add X dimension at end of X axis
             label_3d_positions.push((
-                axis_origin + vec3(x_len + 0.05, -0.08, 0.0),
+                axis_origin + vec3(x_len + 0.03, -0.04, 0.0),
                 format!("{:.1}mm", model_size_x),
                 Color::from_rgba(255, 120, 120, 255)
             ));
             
             label_3d_positions.push((
-                axis_origin + vec3(0.0, y_len + 0.1, 0.0),
+                axis_origin + vec3(0.0, y_len + 0.06, 0.0),
                 "Y".to_string(),
                 Color::from_rgba(80, 255, 80, 255)
             ));
             // Add Y dimension at end of Y axis
             label_3d_positions.push((
-                axis_origin + vec3(-0.08, y_len + 0.05, 0.0),
+                axis_origin + vec3(-0.04, y_len + 0.03, 0.0),
                 format!("{:.1}mm", model_size_z),
                 Color::from_rgba(120, 255, 120, 255)
             ));
             
             label_3d_positions.push((
-                axis_origin + vec3(0.0, 0.0, z_len + 0.1),
+                axis_origin + vec3(0.0, 0.0, z_len + 0.06),
                 "Z".to_string(),
                 Color::from_rgba(80, 80, 255, 255)
             ));
             // Add Z dimension at end of Z axis
             label_3d_positions.push((
-                axis_origin + vec3(0.0, -0.08, z_len + 0.05),
+                axis_origin + vec3(0.0, -0.04, z_len + 0.03),
                 format!("{:.1}mm", model_size_y),
                 Color::from_rgba(120, 120, 255, 255)
             ));
